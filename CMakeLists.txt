@@ -17,6 +17,8 @@ qt_add_executable(DDLstriker
         player.h
         bullet.cpp
         bullet.h
+        enemy.cpp
+        enemy.h
 )
 
 qt_add_translations(

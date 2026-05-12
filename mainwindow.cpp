@@ -2,7 +2,9 @@
 #include "ui_mainwindow.h"
 #include "player.h"
 #include "gameobject.h"
+#include "enemy.h"
 #include <QMessageBox>
+#include <QRandomGenerator>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
@@ -10,7 +12,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     setWindowTitle("焦虑粉碎机 - DDL Strike");
 
-    // 菜单信号绑定
     connect(ui->actionNewGame, &QAction::triggered, this, &MainWindow::startGame);
     connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
     connect(ui->actionHelp, &QAction::triggered, this, [this]() {
@@ -18,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
                                  "← → 或 A/D 移动飞机\n空格键发射子弹\n消灭下落的DDL和焦虑！");
     });
 
-    // 创建图形场景（背景为黑色）
+    // 场景
     scene = new QGraphicsScene(this);
     scene->setSceneRect(0, 0, 480, 800);
     view = new QGraphicsView(scene, this);
@@ -28,21 +29,22 @@ MainWindow::MainWindow(QWidget *parent)
     scene->setBackgroundBrush(Qt::black);
     setCentralWidget(view);
 
-    // 初始化游戏循环定时器
+    // 主循环
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &MainWindow::gameLoop);
+
+    // 敌人生成器
+    enemyTimer = new QTimer(this);
+    connect(enemyTimer, &QTimer::timeout, this, &MainWindow::spawnEnemy);
 
     player = nullptr;
 }
 
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
+MainWindow::~MainWindow() { delete ui; }
 
+// 开始新游戏
 void MainWindow::startGame()
 {
-    // 清空场景，创建新玩家
     scene->clear();
 
     player = new Player();
@@ -50,48 +52,84 @@ void MainWindow::startGame()
     player->setPos(225, 720);
     player->setFlag(QGraphicsItem::ItemIsFocusable);
 
-    timer->start(16);   // 大约60帧每秒
+    m_gameFrames = 0;
+    timer->start(16);
+    enemyTimer->start(1200);          // 第一个敌人稍快出现
 }
 
+// 主循环
 void MainWindow::gameLoop()
 {
-    // 推动所有游戏对象移动
+    m_gameFrames++;
+
+    if (player) {
+        // 移动
+        if (m_leftPressed)
+            player->setPos(player->x() - player->speed, player->y());
+        if (m_rightPressed)
+            player->setPos(player->x() + player->speed, player->y());
+
+        // 边界
+        QRectF sr = scene->sceneRect();
+        int pw = player->pixmap().width();
+        qreal newX = qBound(sr.left(), player->x(), sr.right() - pw);
+        player->setPos(newX, player->y());
+
+        // 射击
+        if (m_spacePressed && m_shootCooldown <= 0) {
+            player->shoot();
+            m_shootCooldown = SHOOT_DELAY;
+        }
+        if (m_shootCooldown > 0)
+            m_shootCooldown--;
+    }
+
+    // 推动所有游戏对象移动（子弹、敌人等）
     QList<QGraphicsItem*> items = scene->items();
     for (QGraphicsItem *item : items) {
-        if (GameObject *obj = dynamic_cast<GameObject*>(item)) {
+        if (GameObject *obj = dynamic_cast<GameObject*>(item))
             obj->move();
-        }
     }
 }
 
+// 按键
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
     if (!player) {
         QMainWindow::keyPressEvent(event);
         return;
     }
-
-    // 玩家移动和射击
     switch (event->key()) {
-    case Qt::Key_Left:
-    case Qt::Key_A:
-        player->setPos(player->x() - player->speed, player->y());
-        break;
-    case Qt::Key_Right:
-    case Qt::Key_D:
-        player->setPos(player->x() + player->speed, player->y());
-        break;
-    case Qt::Key_Space:
-        player->shoot();
-        return;         // 射击不需要边界检查
-    default:
-        QMainWindow::keyPressEvent(event);
+    case Qt::Key_Left:  case Qt::Key_A: m_leftPressed  = true; break;
+    case Qt::Key_Right: case Qt::Key_D: m_rightPressed = true; break;
+    case Qt::Key_Space: m_spacePressed = true; break;
+    default: QMainWindow::keyPressEvent(event);
+    }
+}
+
+void MainWindow::keyReleaseEvent(QKeyEvent *event)
+{
+    if (!player) {
+        QMainWindow::keyReleaseEvent(event);
         return;
     }
+    switch (event->key()) {
+    case Qt::Key_Left:  case Qt::Key_A: m_leftPressed  = false; break;
+    case Qt::Key_Right: case Qt::Key_D: m_rightPressed = false; break;
+    case Qt::Key_Space: m_spacePressed = false; break;
+    default: QMainWindow::keyReleaseEvent(event);
+    }
+}
 
-    // 边界限制
-    QRectF sr = scene->sceneRect();
-    int pw = player->pixmap().width();
-    qreal newX = qBound(sr.left(), player->x(), sr.right() - pw);
-    player->setPos(newX, player->y());
+// 敌人生成
+void MainWindow::spawnEnemy()
+{
+    double elapsed = m_gameFrames / 60.0;
+    Enemy *enemy = new Enemy(elapsed);
+    int x = rand() % (480 - 30);
+    enemy->setPos(x, -30);
+    scene->addItem(enemy);
+
+    int next = 800 + rand() % 1201;
+    enemyTimer->start(next);
 }

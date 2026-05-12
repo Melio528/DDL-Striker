@@ -8,7 +8,6 @@
 #include <QKeyEvent>
 
 class Player;
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -16,24 +15,33 @@ QT_END_NAMESPACE
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 protected:
-    void keyPressEvent(QKeyEvent *event) override; // 处理键盘按下
+    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
 
 private slots:
-    void startGame(); // 开始新游戏
-    void gameLoop();  // 游戏主循环，每帧执行
+    void startGame();
+    void gameLoop();
+    void spawnEnemy();
 
 private:
     Ui::MainWindow *ui;
-    QGraphicsScene *scene;   // 游戏场景
-    QGraphicsView *view;     // 场景视图
-    QTimer *timer;           // 游戏循环定时器
-    Player *player;          // 玩家对象
+    QGraphicsScene *scene;
+    QGraphicsView *view;
+    QTimer *timer;
+    QTimer *enemyTimer;
+    Player *player;
+
+    bool m_leftPressed = false;
+    bool m_rightPressed = false;
+    bool m_spacePressed = false;
+    int m_shootCooldown = 0;
+    int m_gameFrames = 0;
+    static const int SHOOT_DELAY = 8;
 };
 
 #endif // MAINWINDOW_H
