@@ -15,6 +15,7 @@ public:
     int maxHealth = 5;
     int currentHealth = 5;
     bool invincible = false;
+    int invincibleFrames = 0;   // 无敌剩余帧数
 };
 
 #endif // PLAYER_H

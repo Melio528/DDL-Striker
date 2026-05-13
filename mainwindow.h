@@ -42,6 +42,10 @@ private:
     int m_shootCooldown = 0;
     int m_gameFrames = 0;
     static const int SHOOT_DELAY = 8;
+    int m_score = 0;
+    int m_health = 5;
+    QGraphicsTextItem *scoreText = nullptr;
+    QGraphicsTextItem *healthText = nullptr;
 };
 
 #endif // MAINWINDOW_H
