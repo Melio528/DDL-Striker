@@ -6,21 +6,18 @@
 Enemy::Enemy(double difficulty, QObject *parent)
     : GameObject(parent)
 {
-    // 随机颜色代表不同敌人类型
-    int r = rand() % 3;
-    QPixmap pix(30, 30);
-    pix.fill(Qt::transparent);
-    QPainter painter(&pix);
+    int r = rand() % 4;
+    QPixmap pix;
     switch (r) {
-    case 0: painter.setBrush(Qt::red);    break;
-    case 1: painter.setBrush(Qt::magenta); break;
-    case 2: painter.setBrush(Qt::darkRed); break;
+    case 0: pix.load("images/DDL.png"); break;
+    case 1: pix.load("images/homework.png"); break;
+    case 2: pix.load("images/PFT.png"); break;
+    case 3: pix.load("images/finalexam.png"); break;
     }
-    painter.drawRect(0, 0, 30, 30);
-    painter.end();
+    pix = pix.scaled(72, 72, Qt::KeepAspectRatio, Qt::FastTransformation);
     setPixmap(pix);
 
-    // 速度随游戏时长递增，保留随机性
+    // 速度随难度递增
     int baseSpeed = 1;
     int maxSpeed = 5;
     int extra = qMin((int)(difficulty * 0.4), maxSpeed - baseSpeed);

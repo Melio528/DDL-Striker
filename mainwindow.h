@@ -46,6 +46,11 @@ private:
     int m_health = 5;
     QGraphicsTextItem *scoreText = nullptr;
     QGraphicsTextItem *healthText = nullptr;
+    QGraphicsPixmapItem *bg1 = nullptr;
+    QGraphicsPixmapItem *bg2 = nullptr;
+    int bgScrollSpeed = 2;
+    bool m_paused = false;
+    QGraphicsTextItem *pauseText = nullptr;
 };
 
 #endif // MAINWINDOW_H

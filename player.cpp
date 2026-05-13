@@ -7,15 +7,9 @@
 Player::Player(QObject *parent)
     : GameObject(parent)
 {
-    // 画一个 30x30 的青色方块作为临时飞机
-    QPixmap pix(30, 30);
-    pix.fill(Qt::transparent);
-    QPainter painter(&pix);
-    painter.setBrush(Qt::cyan);
-    painter.drawRect(0, 0, 30, 30);
-    painter.end();
+    QPixmap pix("images/player.png");
+    pix = pix.scaled(72, 72, Qt::KeepAspectRatio, Qt::FastTransformation);
     setPixmap(pix);
-
     setPos(225, 720);
     speed = 5;
     health = maxHealth;

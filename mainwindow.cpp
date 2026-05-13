@@ -6,10 +6,12 @@
 #include <QMessageBox>
 #include <QRandomGenerator>
 #include "bullet.h"
+#include "explosion.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    pauseText = nullptr;
     ui->setupUi(this);
     setWindowTitle("焦虑粉碎机 - DDL Strike");
 
@@ -46,29 +48,47 @@ MainWindow::~MainWindow() { delete ui; }
 // 开始新游戏
 void MainWindow::startGame()
 {
+    m_paused = false;
+    if (pauseText) pauseText->setVisible(false);
     scene->clear();
 
+    // ----- 1. 添加滚动背景 -----
+    QPixmap bgPix("images/background.png");
+    bgPix = bgPix.scaled(480, 800, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    bg1 = new QGraphicsPixmapItem(bgPix);
+    bg1->setPos(0, 0);
+    scene->addItem(bg1);
+
+    bg2 = new QGraphicsPixmapItem(bgPix);
+    bg2->setPos(0, -800);
+    scene->addItem(bg2);
+
+    // ----- 2. 创建玩家（飞机）-----
     player = new Player();
     scene->addItem(player);
     player->setPos(225, 720);
     player->setFlag(QGraphicsItem::ItemIsFocusable);
-    // 初始化状态
+
+    // ----- 3. 初始化游戏状态 -----
     m_gameFrames = 0;
     m_score = 0;
     m_health = 5;
-    // 创建分数 UI (左上角)
+
+    // ----- 4. 创建分数 UI -----
     scoreText = new QGraphicsTextItem("分数: 0");
     scoreText->setDefaultTextColor(Qt::white);
     scoreText->setFont(QFont("Arial", 14));
     scoreText->setPos(10, 10);
     scene->addItem(scoreText);
-    // 创建生命值 UI (右上角)
+
+    // ----- 5. 创建生命值 UI -----
     healthText = new QGraphicsTextItem("生命: 5");
     healthText->setDefaultTextColor(Qt::white);
     healthText->setFont(QFont("Arial", 14));
     healthText->setPos(380, 10);
     scene->addItem(healthText);
-    // 启动游戏循环
+
+    // ----- 6. 启动定时器 -----
     timer->start(16);
     enemyTimer->start(1200);
 }
@@ -77,6 +97,14 @@ void MainWindow::startGame()
 void MainWindow::gameLoop()
 {
     m_gameFrames++;
+
+    // ---------- 滚动背景 ----------
+    if (bg1 && bg2) {
+        bg1->moveBy(0, bgScrollSpeed);
+        bg2->moveBy(0, bgScrollSpeed);
+        if (bg1->y() >= 800) bg1->setPos(0, bg2->y() - 800);
+        if (bg2->y() >= 800) bg2->setPos(0, bg1->y() - 800);
+    }
 
     if (player) {
         // ---------- 移动 ----------
@@ -102,7 +130,6 @@ void MainWindow::gameLoop()
         // ---------- 无敌闪烁 ----------
         if (player->invincible) {
             player->invincibleFrames--;
-            // 每 6 帧切换一次可见性，产生闪烁效果
             player->setVisible((player->invincibleFrames / 3) % 2);
             if (player->invincibleFrames <= 0) {
                 player->invincible = false;
@@ -133,10 +160,15 @@ void MainWindow::gameLoop()
                 for (QGraphicsItem *other : colliding) {
                     GameObject *otherObj = dynamic_cast<GameObject*>(other);
                     if (otherObj && otherObj->type() == GameObject::EnemyType) {
-                        // 击中敌人！
-                        m_score += 10;               // 加分
-                        toRemove.append(item);       // 删除子弹
-                        toRemove.append(other);      // 删除敌人
+                        // 爆炸特效
+                        Explosion *boom = new Explosion();
+                        boom->setPos(otherObj->pos());
+                        scene->addItem(boom);
+                        boom->start();
+
+                        m_score += 10;
+                        toRemove.append(item);
+                        toRemove.append(other);
                         break;
                     }
                 }
@@ -147,24 +179,23 @@ void MainWindow::gameLoop()
         else if (obj->type() == GameObject::EnemyType) {
             if (player && !player->invincible) {
                 if (obj->collidesWithItem(player)) {
-                    m_health--;                     // 扣血
+                    m_health--;
                     player->invincible = true;
-                    player->invincibleFrames = 90;  // 约 1.5 秒无敌
-                    toRemove.append(item);           // 敌人也消失
+                    player->invincibleFrames = 90;
+                    toRemove.append(item);
 
-                    // 游戏结束检查
                     if (m_health <= 0) {
                         timer->stop();
                         enemyTimer->stop();
 
                         QGraphicsTextItem *gameOverText = new QGraphicsTextItem(
-                            "GAME OVER\n\n最终分数: " + QString::number(m_score));
+                            "你又焦虑了！\n\n最终分数: " + QString::number(m_score));
                         gameOverText->setDefaultTextColor(Qt::white);
                         gameOverText->setFont(QFont("Arial", 22));
                         gameOverText->setPos(100, 300);
                         scene->addItem(gameOverText);
 
-                        player = nullptr;   // 禁止继续操作
+                        player = nullptr;
                     }
                 }
             }
@@ -177,7 +208,7 @@ void MainWindow::gameLoop()
         delete item;
     }
 
-    // ---------- 更新 UI 文字 ----------
+    // ---------- 更新 UI ----------
     if (scoreText)
         scoreText->setPlainText("分数: " + QString::number(m_score));
     if (healthText)
@@ -195,6 +226,28 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
     case Qt::Key_Left:  case Qt::Key_A: m_leftPressed  = true; break;
     case Qt::Key_Right: case Qt::Key_D: m_rightPressed = true; break;
     case Qt::Key_Space: m_spacePressed = true; break;
+    case Qt::Key_P:
+        m_paused = !m_paused;
+        if (m_paused) {
+            timer->stop();
+            enemyTimer->stop();
+            // 显示暂停提示
+            if (!pauseText) {
+                pauseText = new QGraphicsTextItem("赶DDL中...");
+                pauseText->setDefaultTextColor(Qt::yellow);
+                pauseText->setFont(QFont("Arial", 18));
+                pauseText->setPos(180, 380);
+                scene->addItem(pauseText);
+            } else {
+                pauseText->setVisible(true);
+            }
+        } else {
+            timer->start(16);
+            enemyTimer->start(1200);
+            if (pauseText)
+                pauseText->setVisible(false);
+        }
+        return;
     default: QMainWindow::keyPressEvent(event);
     }
 }

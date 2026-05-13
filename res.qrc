@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/player.png</file>
+        <file>images/DDL.png</file>
+        <file>images/homework.png</file>
+        <file>images/PFT.png</file>
+        <file>images/finalexam.png</file>
+        <file>images/bullet.png</file>
+        <file>images/background.png</file>
+    </qresource>
+</RCC>
