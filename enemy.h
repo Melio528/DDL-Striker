@@ -12,6 +12,8 @@ public:
     void move() override;
 
     int scoreValue = 10; // 被击毁时玩家获得的分数
+signals:
+    void escaped();   // 敌人逃出屏幕时发出的信号
 };
 
 #endif // ENEMY_H

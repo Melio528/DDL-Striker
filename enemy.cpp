@@ -27,8 +27,8 @@ Enemy::Enemy(double difficulty, QObject *parent)
 void Enemy::move()
 {
     setY(y() + speed);
-    // 移出屏幕底部就自动删除
     if (y() > 820) {
+        emit escaped();            // 发出逃逸信号
         scene()->removeItem(this);
         deleteLater();
     }

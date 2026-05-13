@@ -275,6 +275,30 @@ void MainWindow::spawnEnemy()
     enemy->setPos(x, -30);
     scene->addItem(enemy);
 
+    // 连接逃逸信号到槽函数
+    connect(enemy, &Enemy::escaped, this, &MainWindow::onEnemyEscaped);
+
     int next = 800 + rand() % 1201;
     enemyTimer->start(next);
+}
+
+void MainWindow::onEnemyEscaped()
+{
+    // 随机选择文字
+    QString text = (rand() % 2 == 0) ? "烦躁值+1" : "耐心值-1";
+
+    // 创建闪烁文字
+    QGraphicsTextItem *annoyText = new QGraphicsTextItem(text);
+    annoyText->setDefaultTextColor(Qt::red);
+    annoyText->setFont(QFont("Arial", 16, QFont::Bold));
+
+    // 随机位置（屏幕中央附近）
+    int tx = 100 + rand() % 280;
+    int ty = 300 + rand() % 200;
+    annoyText->setPos(tx, ty);
+
+    scene->addItem(annoyText);
+
+    // 1 秒后自动删除
+    QTimer::singleShot(1000, annoyText, &QObject::deleteLater);
 }

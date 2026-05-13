@@ -27,6 +27,7 @@ private slots:
     void startGame();
     void gameLoop();
     void spawnEnemy();
+    void onEnemyEscaped();   // 处理敌人逃逸
 
 private:
     Ui::MainWindow *ui;
